@@ -1,9 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { api, Agent, Skill, Rule, GitHubLoadResponse } from "./api";
 import DiagramView from "./components/DiagramView";
 import LoadingSpinner from "./components/LoadingSpinner";
 
 type Tab = "agents" | "skills" | "rules" | "diagram";
+
+const STORAGE_KEY = "make-agent:cache";
+
+interface CachedData {
+  url: string;
+  project: GitHubLoadResponse;
+  agents: Agent[];
+  skills: Skill[];
+  rules: Rule[];
+  savedAt: number;
+}
+
+function loadCache(): CachedData | null {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function saveCache(data: CachedData) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* quota exceeded — ignore */ }
+}
 
 const TAB_CONFIG: Record<string, { label: string; icon: string; color: string }> = {
   agents: { label: "Agents", icon: "A", color: "agent" },
@@ -13,16 +40,25 @@ const TAB_CONFIG: Record<string, { label: string; icon: string; color: string }>
 };
 
 function App() {
-  const [url, setUrl] = useState("");
-  const [project, setProject] = useState<GitHubLoadResponse | null>(null);
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [rules, setRules] = useState<Rule[]>([]);
+  const cached = loadCache();
+  const [url, setUrl] = useState(cached?.url ?? "");
+  const [project, setProject] = useState<GitHubLoadResponse | null>(cached?.project ?? null);
+  const [agents, setAgents] = useState<Agent[]>(cached?.agents ?? []);
+  const [skills, setSkills] = useState<Skill[]>(cached?.skills ?? []);
+  const [rules, setRules] = useState<Rule[]>(cached?.rules ?? []);
   const [tab, setTab] = useState<Tab>("agents");
   const [selected, setSelected] = useState<Agent | Skill | Rule | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "detail">("list");
+
+  // 캐시에서 복원한 경우 백엔드에도 load 호출 (세션 상태 동기화)
+  useEffect(() => {
+    if (cached?.url && cached?.project) {
+      api.loadProject(cached.url).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleLoad = async () => {
     if (!url.trim()) return;
@@ -42,6 +78,8 @@ function App() {
       setSelected(null);
       setTab("agents");
       setMobileView("list");
+
+      saveCache({ url, project: proj, agents: a, skills: s, rules: r, savedAt: Date.now() });
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
     }
