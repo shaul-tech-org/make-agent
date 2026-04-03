@@ -123,11 +123,14 @@ function App() {
       {!project ? (
         <Landing />
       ) : (
-        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
+        <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
           {/* Bottom Nav (mobile) / Left Nav (desktop) */}
-          <nav className="order-last md:order-first md:w-14 border-t md:border-t-0 md:border-r border-border
+          <nav className="md:order-first md:w-14 md:border-r border-border
+                          fixed md:static bottom-0 left-0 right-0 z-20
                           flex md:flex-col items-center justify-around md:justify-start
-                          py-1.5 md:py-3 gap-0 md:gap-1 bg-surface flex-shrink-0">
+                          py-1.5 md:py-3 gap-0 md:gap-1 bg-surface flex-shrink-0
+                          border-t md:border-t-0
+                          safe-bottom">
             {tabItems.map((t) => {
               const cfg = TAB_CONFIG[t.key];
               const isActive = tab === t.key;
@@ -167,6 +170,7 @@ function App() {
             <>
               {/* Sidebar — full width on mobile, fixed width on desktop */}
               <aside className={`md:w-72 md:border-r border-border flex flex-col bg-surface
+                                 pb-14 md:pb-0
                                  ${mobileView === "detail" ? "hidden md:flex" : "flex"} flex-1 md:flex-none`}>
                 <div className="px-3 py-2.5 border-b border-border flex items-center justify-between">
                   <h2 className="text-xs font-semibold text-text-secondary uppercase tracking-widest">
@@ -197,7 +201,7 @@ function App() {
               </aside>
 
               {/* Detail — hidden on mobile unless item selected */}
-              <main className={`flex-1 overflow-y-auto
+              <main className={`flex-1 overflow-y-auto pb-14 md:pb-0
                                 ${mobileView === "list" ? "hidden md:block" : "block"}`}>
                 {!selected ? (
                   <EmptyDetail tab={tab} />

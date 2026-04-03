@@ -76,3 +76,8 @@ body {
   0%, 100% { box-shadow: 0 0 0 0 var(--color-accent-muted); }
   50% { box-shadow: 0 0 12px 2px var(--color-accent-muted); }
 }
+
+/* Safe area for mobile bottom nav */
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0);
+}
