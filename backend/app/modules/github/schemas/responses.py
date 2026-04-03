@@ -72,3 +72,15 @@ class DiagramResponse(BaseModel):
     edges: list[DiagramEdge]
     mermaid: str
     logs: list[str]
+
+
+class OrgChartNode(BaseModel):
+    name: str
+    model: str
+    role: str
+    children: list["OrgChartNode"] = []
+
+
+class OrgChartResponse(BaseModel):
+    tree: OrgChartNode
+    mermaid: str

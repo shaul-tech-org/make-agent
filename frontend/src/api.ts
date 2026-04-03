@@ -81,6 +81,18 @@ export interface DiagramData {
   logs: string[];
 }
 
+export interface OrgChartNode {
+  name: string;
+  model: string;
+  role: string;
+  children: OrgChartNode[];
+}
+
+export interface OrgChartData {
+  tree: OrgChartNode;
+  mermaid: string;
+}
+
 export const api = {
   loadProject: (url: string) =>
     fetchJson<GitHubLoadResponse>(`${BASE}/github/load`, {
@@ -97,4 +109,5 @@ export const api = {
   getSkills: () => fetchJson<Skill[]>(`${BASE}/github/skills`),
   getRules: () => fetchJson<Rule[]>(`${BASE}/github/rules`),
   getDiagram: () => fetchJson<DiagramData>(`${BASE}/github/diagram`),
+  getOrgChart: () => fetchJson<OrgChartData>(`${BASE}/github/org-chart`),
 };

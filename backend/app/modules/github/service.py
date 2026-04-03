@@ -22,6 +22,8 @@ from app.modules.github.schemas.responses import (
     FileTreeItem,
     FileTreeResponse,
     GitHubLoadResponse,
+    OrgChartNode,
+    OrgChartResponse,
     RuleResponse,
     SkillResponse,
 )
@@ -252,6 +254,77 @@ class GitHubService:
                     ))
                 except Exception:
                     continue
+
+    async def get_org_chart(self) -> OrgChartResponse:
+        """rules/governance/org-chart.md의 보고 라인 테이블을 파싱하여 조직도 생성."""
+        self._ensure_loaded()
+        agents = await self.get_agents()
+        agent_map = {a.name: a for a in agents}
+
+        # org-chart rule 찾기
+        rules = await self.get_rules()
+        org_rule = next((r for r in rules if r.name == "org-chart"), None)
+
+        # 보고 라인 파싱
+        reports_to: dict[str, str] = {}  # child → parent
+        roles: dict[str, str] = {}
+        if org_rule:
+            for line in org_rule.body.split("\n"):
+                line = line.strip()
+                if line.startswith("|") and not line.startswith("|-") and "에이전트" not in line and "---" not in line:
+                    cols = [c.strip() for c in line.split("|") if c.strip()]
+                    if len(cols) >= 3:
+                        agent_name, parent, role = cols[0], cols[1], cols[2]
+                        if agent_name in agent_map or agent_name == "coordinator":
+                            reports_to[agent_name] = parent
+                            roles[agent_name] = role
+
+        # 트리 빌드
+        def build_node(name: str) -> OrgChartNode:
+            agent = agent_map.get(name)
+            model = agent.model if agent else ""
+            role = roles.get(name, agent.description if agent else "")
+            children_names = [k for k, v in reports_to.items() if v == name]
+            children = [build_node(c) for c in children_names]
+            return OrgChartNode(name=name, model=model, role=role, children=children)
+
+        # 루트: 사용자 (coordinator의 상급자)
+        root = OrgChartNode(
+            name="사용자",
+            model="board",
+            role="프로젝트 오너",
+            children=[build_node(k) for k, v in reports_to.items() if v == "사용자"],
+        )
+
+        # Mermaid 생성
+        mermaid = self._build_org_mermaid(root)
+
+        return OrgChartResponse(tree=root, mermaid=mermaid)
+
+    def _build_org_mermaid(self, root: OrgChartNode) -> str:
+        lines = ["graph TD"]
+        lines.append("    classDef board fill:#f59e0b,stroke:#b45309,color:#fff,font-weight:bold")
+        lines.append("    classDef opus fill:#6366f1,stroke:#4338ca,color:#fff,font-weight:bold")
+        lines.append("    classDef sonnet fill:#3b82f6,stroke:#1d4ed8,color:#fff")
+
+        def add_node(node: OrgChartNode) -> None:
+            safe = node.name.replace("-", "_").replace(" ", "_")
+            role_short = node.role[:20] + "..." if len(node.role) > 20 else node.role
+            label = f"{node.name}<br/><small>{role_short}</small>"
+            if node.model == "board":
+                lines.append(f'    {safe}["{label}"]:::board')
+            elif "opus" in node.model:
+                lines.append(f'    {safe}["{label}"]:::opus')
+            else:
+                lines.append(f'    {safe}(["{label}"]):::sonnet')
+
+            for child in node.children:
+                child_safe = child.name.replace("-", "_").replace(" ", "_")
+                add_node(child)
+                lines.append(f"    {safe} --> {child_safe}")
+
+        add_node(root)
+        return "\n".join(lines)
 
     async def get_diagram(self) -> DiagramResponse:
         self._ensure_loaded()

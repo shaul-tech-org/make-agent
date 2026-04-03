@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { api, Agent, Skill, Rule, GitHubLoadResponse } from "./api";
 import DiagramView from "./components/DiagramView";
+import OrgChartView from "./components/OrgChartView";
 import LoadingSpinner from "./components/LoadingSpinner";
 
-type Tab = "agents" | "skills" | "rules" | "diagram";
+type Tab = "agents" | "skills" | "rules" | "diagram" | "org";
 
 const STORAGE_KEY = "make-agent:cache";
 
@@ -37,6 +38,7 @@ const TAB_CONFIG: Record<string, { label: string; icon: string; color: string }>
   skills: { label: "Skills", icon: "S", color: "skill" },
   rules: { label: "Rules", icon: "R", color: "rule" },
   diagram: { label: "Diagram", icon: "D", color: "accent" },
+  org: { label: "Org", icon: "O", color: "warning" },
 };
 
 function App() {
@@ -99,6 +101,7 @@ function App() {
     { key: "skills", count: skills.length },
     { key: "rules", count: rules.length },
     { key: "diagram", count: null },
+    { key: "org", count: null },
   ];
 
   const currentList = tab === "agents" ? agents : tab === "skills" ? skills : rules;
@@ -207,6 +210,8 @@ function App() {
           <div className="flex-1 min-h-0 min-w-0 flex flex-col md:flex-row overflow-hidden">
             {tab === "diagram" ? (
               <DiagramView />
+            ) : tab === "org" ? (
+              <OrgChartView />
             ) : (
               <>
                 {/* Sidebar */}

@@ -7,6 +7,7 @@ from app.modules.github.schemas.responses import (
     FileContentResponse,
     FileTreeResponse,
     GitHubLoadResponse,
+    OrgChartResponse,
     RuleResponse,
     SkillResponse,
 )
@@ -48,3 +49,8 @@ async def get_rules():
 @router.get("/diagram", response_model=DiagramResponse)
 async def get_diagram():
     return await github_service.get_diagram()
+
+
+@router.get("/org-chart", response_model=OrgChartResponse)
+async def get_org_chart():
+    return await github_service.get_org_chart()
