@@ -8,6 +8,7 @@ RUN pip install --no-cache-dir --prefix=/install .
 # === Runtime ===
 FROM python:3.12-slim AS runtime
 
+RUN apt-get update && apt-get install -y --no-install-recommends git && rm -rf /var/lib/apt/lists/*
 RUN groupadd -r app && useradd -r -g app app
 
 WORKDIR /app
@@ -16,7 +17,7 @@ COPY app/ ./app/
 COPY alembic/ ./alembic/
 COPY alembic.ini .
 
-RUN chown -R app:app /app
+RUN mkdir -p /tmp/make-agent-clones && chown -R app:app /app /tmp/make-agent-clones
 USER app
 
 EXPOSE 8000
