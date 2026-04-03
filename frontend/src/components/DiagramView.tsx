@@ -147,7 +147,7 @@ export default function DiagramView() {
   } : null;
 
   return (
-    <div className="flex flex-col h-full pb-14 md:pb-0">
+    <div className="flex flex-col h-full pb-20 md:pb-0">
       {/* Controls */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between
                       px-3 sm:px-4 py-2 border-b border-border bg-surface-raised gap-2">
