@@ -3,11 +3,12 @@ services:
     build:
       context: ./backend
     ports:
-      - "8000:8000"
+      - "8701:8000"
     environment:
       - APP_DEBUG=true
-      - APP_CORS_ORIGINS=["http://localhost:5173","http://localhost:3000"]
+      - APP_CORS_ORIGINS=["http://localhost:5173","http://localhost:3000","https://make-agent.shaul.kr"]
       - APP_DATABASE_URL=postgresql+asyncpg://make_agent:make_agent_dev@postgres:5432/make_agent
+      - APP_GITHUB_TOKEN=${GITHUB_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy
@@ -19,7 +20,7 @@ services:
     build:
       context: ./frontend
     ports:
-      - "3000:80"
+      - "8700:80"
     depends_on:
       - backend
     restart: unless-stopped
