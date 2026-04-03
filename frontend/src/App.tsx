@@ -120,7 +120,7 @@ function App() {
    */
 
   return (
-    <div className="h-screen flex flex-col bg-surface text-text-primary overflow-hidden">
+    <div className="app-shell bg-surface text-text-primary">
       {/* ─── Header ─── */}
       <header className="flex-shrink-0 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-3
                           border-b border-border bg-surface-raised/80 backdrop-blur-sm">
