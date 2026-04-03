@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 import frontmatter
 import httpx
 
+from app.config import settings
 from app.modules.github.exceptions import (
     GitHubApiException,
     InvalidGitHubUrlException,
@@ -12,6 +13,9 @@ from app.modules.github.exceptions import (
 )
 from app.modules.github.schemas.responses import (
     AgentResponse,
+    DiagramEdge,
+    DiagramNode,
+    DiagramResponse,
     FileContentResponse,
     FileTreeItem,
     FileTreeResponse,
@@ -58,7 +62,7 @@ class GitHubService:
         self._owner = owner
         self._repo = repo
         self._branch = branch
-        self._token = token
+        self._token = token or settings.github_token or None
         self._tree_cache = None
 
         # .claude 디렉토리 존재 여부 확인
@@ -232,6 +236,148 @@ class GitHubService:
                     ))
                 except Exception:
                     continue
+
+    async def get_diagram(self) -> DiagramResponse:
+        self._ensure_loaded()
+        logs: list[str] = []
+
+        logs.append("[1/5] 에이전트, 스킬, 규칙 데이터 수집 시작")
+        agents = await self.get_agents()
+        logs.append(f"  → 에이전트 {len(agents)}개 로드 완료")
+        skills = await self.get_skills()
+        logs.append(f"  → 스킬 {len(skills)}개 로드 완료")
+        rules = await self.get_rules()
+        logs.append(f"  → 규칙 {len(rules)}개 로드 완료")
+
+        nodes: list[DiagramNode] = []
+        edges: list[DiagramEdge] = []
+        agent_names = {a.name for a in agents}
+        skill_names = {s.name for s in skills}
+
+        # --- 노드 생성 ---
+        logs.append("[2/5] 노드 생성 중")
+        for a in agents:
+            nodes.append(DiagramNode(
+                id=f"agent_{a.name}", type="agent", name=a.name,
+                label=f"{a.name}\\n({a.model})",
+                metadata={"model": a.model, "description": a.description},
+            ))
+        for s in skills:
+            nodes.append(DiagramNode(
+                id=f"skill_{s.name}", type="skill", name=s.name,
+                label=s.name,
+                metadata={"user_invocable": s.user_invocable, "description": s.description},
+            ))
+        for r in rules:
+            nodes.append(DiagramNode(
+                id=f"rule_{r.name}", type="rule", name=r.name,
+                label=f"{r.name}\\n[{r.category}]",
+                metadata={"category": r.category, "always_loaded": r.always_loaded},
+            ))
+        logs.append(f"  → 총 {len(nodes)}개 노드 생성")
+
+        # --- 관계 분석 ---
+        logs.append("[3/5] 에이전트 간 계층 관계 분석 중")
+        for a in agents:
+            body_lower = a.body.lower()
+            for other in agent_names:
+                if other != a.name and other in body_lower:
+                    edges.append(DiagramEdge(
+                        source=f"agent_{a.name}", target=f"agent_{other}",
+                        type="hierarchy", label="delegates",
+                    ))
+                    logs.append(f"  → {a.name} --delegates--> {other}")
+
+        logs.append("[4/5] 스킬 참조 관계 분석 중")
+        for s in skills:
+            body_lower = s.body.lower()
+            # 스킬 → 에이전트 참조
+            for aname in agent_names:
+                if aname in body_lower:
+                    edges.append(DiagramEdge(
+                        source=f"skill_{s.name}", target=f"agent_{aname}",
+                        type="uses_agent", label="used by",
+                    ))
+                    logs.append(f"  → 스킬 '{s.name}' → 에이전트 '{aname}'")
+            # 스킬 → 스킬 의존성 (/skill-name 패턴)
+            for other in skill_names:
+                if other != s.name and f"/{other}" in s.body:
+                    edges.append(DiagramEdge(
+                        source=f"skill_{s.name}", target=f"skill_{other}",
+                        type="skill_dep", label="depends",
+                    ))
+                    logs.append(f"  → 스킬 '{s.name}' --depends--> '{other}'")
+
+        logs.append("[5/5] 규칙 적용 범위 분석 중")
+        for r in rules:
+            if r.always_loaded:
+                logs.append(f"  → 규칙 '{r.name}' (항상 로드)")
+            else:
+                for p in r.paths:
+                    if "*.py" in p:
+                        # Python 규칙 → 백엔드 에이전트 연결
+                        for aname in agent_names:
+                            if "be" in aname or "backend" in aname:
+                                edges.append(DiagramEdge(
+                                    source=f"rule_{r.name}", target=f"agent_{aname}",
+                                    type="rule_scope", label=p,
+                                ))
+                    elif "*.ts" in p:
+                        for aname in agent_names:
+                            if "fe" in aname or "frontend" in aname:
+                                edges.append(DiagramEdge(
+                                    source=f"rule_{r.name}", target=f"agent_{aname}",
+                                    type="rule_scope", label=p,
+                                ))
+                logs.append(f"  → 규칙 '{r.name}' paths={r.paths}")
+
+        # --- Mermaid 생성 ---
+        mermaid = self._build_mermaid(agents, skills, rules, edges)
+        logs.append(f"[완료] Mermaid 다이어그램 생성 — 노드 {len(nodes)}, 엣지 {len(edges)}")
+
+        return DiagramResponse(nodes=nodes, edges=edges, mermaid=mermaid, logs=logs)
+
+    def _build_mermaid(
+        self,
+        agents: list[AgentResponse],
+        skills: list[SkillResponse],
+        rules: list[RuleResponse],
+        edges: list[DiagramEdge],
+    ) -> str:
+        lines = ["graph TD"]
+
+        # 스타일 클래스
+        lines.append("    classDef agent fill:#3b82f6,stroke:#1d4ed8,color:#fff")
+        lines.append("    classDef skill fill:#10b981,stroke:#047857,color:#fff")
+        lines.append("    classDef rule fill:#f59e0b,stroke:#b45309,color:#fff")
+
+        # 에이전트 노드
+        for a in agents:
+            safe = a.name.replace("-", "_")
+            lines.append(f'    agent_{safe}["{a.name}<br/><small>{a.model}</small>"]:::agent')
+
+        # 스킬 노드
+        for s in skills:
+            safe = s.name.replace("-", "_")
+            inv = "⚡" if s.user_invocable else ""
+            lines.append(f'    skill_{safe}(["{inv}{s.name}"]):::skill')
+
+        # 규칙 노드
+        for r in rules:
+            safe = r.name.replace("-", "_")
+            scope = "🌐" if r.always_loaded else "📁"
+            lines.append(f'    rule_{safe}{{{{"{scope}{r.name}"}}}}):::rule')
+
+        # 엣지
+        for e in edges:
+            src = e.source.replace("-", "_")
+            tgt = e.target.replace("-", "_")
+            if e.label:
+                lines.append(f"    {src} -->|{e.label}| {tgt}")
+            else:
+                lines.append(f"    {src} --> {tgt}")
+
+        return "\n".join(lines)
 
     def _ensure_loaded(self) -> None:
         if not self._owner or not self._repo:

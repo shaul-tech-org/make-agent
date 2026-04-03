@@ -50,3 +50,25 @@ class RuleResponse(BaseModel):
     body: str
     file_path: str
     always_loaded: bool
+
+
+class DiagramNode(BaseModel):
+    id: str
+    type: str  # "agent", "skill", "rule"
+    name: str
+    label: str
+    metadata: dict = {}
+
+
+class DiagramEdge(BaseModel):
+    source: str
+    target: str
+    type: str  # "hierarchy", "uses_skill", "rule_scope", "skill_dep"
+    label: str = ""
+
+
+class DiagramResponse(BaseModel):
+    nodes: list[DiagramNode]
+    edges: list[DiagramEdge]
+    mermaid: str
+    logs: list[str]

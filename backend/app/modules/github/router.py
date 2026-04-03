@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.modules.github.schemas.requests import GitHubLoadRequest
 from app.modules.github.schemas.responses import (
     AgentResponse,
+    DiagramResponse,
     FileContentResponse,
     FileTreeResponse,
     GitHubLoadResponse,
@@ -42,3 +43,8 @@ async def get_skills():
 @router.get("/rules", response_model=list[RuleResponse])
 async def get_rules():
     return await github_service.get_rules()
+
+
+@router.get("/diagram", response_model=DiagramResponse)
+async def get_diagram():
+    return await github_service.get_diagram()
