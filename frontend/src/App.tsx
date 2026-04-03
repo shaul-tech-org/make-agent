@@ -106,7 +106,7 @@ function App() {
   const currentList = tab === "agents" ? agents : tab === "skills" ? skills : rules;
 
   return (
-    <div className="h-screen flex flex-col bg-surface text-text-primary">
+    <div className="h-screen flex flex-col bg-surface text-text-primary overflow-hidden">
       {/* Header */}
       <header className="flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-2.5 sm:py-3 border-b border-border bg-surface-raised/80 backdrop-blur-sm">
         <div className="flex items-center gap-2 flex-shrink-0">
@@ -220,7 +220,7 @@ function App() {
                     </span>
                   )}
                 </div>
-                <div className="flex-1 overflow-y-auto pb-20 md:pb-0">
+                <div className="flex-1 overflow-y-auto pb-20 md:pb-0 overscroll-contain">
                   {currentList.map((item) => (
                     <SidebarItem
                       key={item.name}
@@ -239,7 +239,7 @@ function App() {
               </aside>
 
               {/* Detail — hidden on mobile unless item selected */}
-              <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 min-h-0
+              <main className={`flex-1 overflow-y-auto pb-20 md:pb-0 min-h-0 overscroll-contain
                                 ${mobileView === "list" ? "hidden md:block" : "block"}`}>
                 {!selected ? (
                   <EmptyDetail tab={tab} />

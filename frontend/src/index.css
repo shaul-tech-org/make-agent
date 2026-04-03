@@ -38,6 +38,12 @@
 }
 
 /* Base resets */
+html, body {
+  overflow: hidden;
+  overscroll-behavior: none;
+  height: 100%;
+}
+
 body {
   @apply bg-surface text-text-primary font-sans antialiased;
   margin: 0;
