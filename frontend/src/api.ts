@@ -5,84 +5,73 @@ async function fetchJson<T>(url: string, options?: RequestInit): Promise<T> {
     headers: { "Content-Type": "application/json" },
     ...options,
   });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.detail || body.error || `${res.status} ${res.statusText}`);
+  }
   return res.json();
 }
 
-// Types
+export interface GitHubLoadResponse {
+  owner: string;
+  repo: string;
+  branch: string | null;
+  claude_dir_exists: boolean;
+}
+
+export interface FileTreeItem {
+  path: string;
+  type: "file" | "dir";
+  size: number | null;
+}
+
 export interface Agent {
-  id: number;
   name: string;
   description: string;
   model: string;
-  skills: string[];
-  status: string;
+  memory: string | null;
+  body: string;
+  file_path: string;
 }
 
-export interface RouteResult {
-  request: string;
+export interface Skill {
+  name: string;
+  description: string;
+  user_invocable: boolean;
+  argument_hint: string | null;
+  body: string;
+  references: string[];
+  file_path: string;
+}
+
+export interface Rule {
+  name: string;
   category: string;
-  complexity: string;
-  agent: string;
-  delegation_plan: DelegationPlan | null;
+  paths: string[];
+  body: string;
+  file_path: string;
+  always_loaded: boolean;
 }
 
-export interface DelegationPlan {
-  ceo_tasks: CeoTask[];
-  cto_tasks: CtoTask[];
-  phases: Phase[];
-  agent_summary: AgentSummary[];
-}
-
-export interface CeoTask {
-  id: number;
-  name: string;
-  type: string;
-  depends_on: number[];
-}
-
-export interface CtoTask {
-  id: number;
-  ceo_task_id: number;
-  name: string;
-  agent: string;
-  file_path: string | null;
-  test_criteria: string | null;
-}
-
-export interface Phase {
-  phase: number;
-  tasks: string[];
-  parallel: boolean;
-}
-
-export interface AgentSummary {
-  agent: string;
-  task_count: number;
-}
-
-export interface Comment {
-  id: number;
-  agent: string;
-  task_id: string;
-  type: string;
+export interface FileContent {
+  path: string;
   content: string;
-  escalate_to: string | null;
-  timestamp: string;
+  size: number;
 }
 
-// API calls
 export const api = {
-  getAgents: () => fetchJson<Agent[]>(`${BASE}/agents`),
-
-  sendRequest: (request: string) =>
-    fetchJson<RouteResult>(`${BASE}/request`, {
+  loadProject: (url: string) =>
+    fetchJson<GitHubLoadResponse>(`${BASE}/github/load`, {
       method: "POST",
-      body: JSON.stringify({ request }),
+      body: JSON.stringify({ url }),
     }),
 
-  getComments: (taskId?: string) => {
-    const params = taskId ? `?task_id=${taskId}` : "";
-    return fetchJson<Comment[]>(`${BASE}/communication/comments${params}`);
-  },
+  getTree: () => fetchJson<{ files: FileTreeItem[] }>(`${BASE}/github/tree`),
+
+  getFile: (path: string) =>
+    fetchJson<FileContent>(`${BASE}/github/file?path=${encodeURIComponent(path)}`),
+
+  getAgents: () => fetchJson<Agent[]>(`${BASE}/github/agents`),
+  getSkills: () => fetchJson<Skill[]>(`${BASE}/github/skills`),
+  getRules: () => fetchJson<Rule[]>(`${BASE}/github/rules`),
 };
