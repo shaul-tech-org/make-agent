@@ -1,0 +1,42 @@
+{
+  "providers": {
+    "claude-code": {
+      "configDir": ".claude",
+      "displayName": "Claude Code",
+      "placeholders": {
+        "model": "Claude",
+        "config_file": "CLAUDE.md",
+        "command_prefix": "/",
+        "ask_instruction": "STOP and call the AskUserQuestion tool to clarify."
+      },
+      "frontmatterFields": ["user-invocable", "argument-hint", "name", "description"]
+    },
+    "cursor": {
+      "configDir": ".cursor",
+      "displayName": "Cursor",
+      "placeholders": {
+        "model": "the model",
+        "config_file": ".cursorrules",
+        "command_prefix": "/",
+        "ask_instruction": "ask the user directly to clarify."
+      },
+      "frontmatterFields": ["name", "description"],
+      "notes": "Cursor는 agents, rules 미지원 — skills만 변환, 프론트매터 최소화"
+    },
+    "gemini": {
+      "configDir": ".gemini",
+      "displayName": "Gemini CLI",
+      "placeholders": {
+        "model": "Gemini",
+        "config_file": "GEMINI.md",
+        "command_prefix": "/",
+        "ask_instruction": "ask the user directly to clarify."
+      },
+      "frontmatterFields": ["name", "description"],
+      "notes": "Gemini는 skills 디렉토리 지원, agents/rules 미지원"
+    }
+  },
+  "sourceDir": ".claude",
+  "distDir": "dist",
+  "version": "1.0.0"
+}
