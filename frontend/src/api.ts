@@ -59,6 +59,28 @@ export interface FileContent {
   size: number;
 }
 
+export interface DiagramNode {
+  id: string;
+  type: string;
+  name: string;
+  label: string;
+  metadata: Record<string, unknown>;
+}
+
+export interface DiagramEdge {
+  source: string;
+  target: string;
+  type: string;
+  label: string;
+}
+
+export interface DiagramData {
+  nodes: DiagramNode[];
+  edges: DiagramEdge[];
+  mermaid: string;
+  logs: string[];
+}
+
 export const api = {
   loadProject: (url: string) =>
     fetchJson<GitHubLoadResponse>(`${BASE}/github/load`, {
@@ -74,4 +96,5 @@ export const api = {
   getAgents: () => fetchJson<Agent[]>(`${BASE}/github/agents`),
   getSkills: () => fetchJson<Skill[]>(`${BASE}/github/skills`),
   getRules: () => fetchJson<Rule[]>(`${BASE}/github/rules`),
+  getDiagram: () => fetchJson<DiagramData>(`${BASE}/github/diagram`),
 };
